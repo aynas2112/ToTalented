@@ -1,20 +1,22 @@
-// Navbar.js
-
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import Modal from 'react-modal';
 import { styles } from '../style';
 import { logo } from '../assets';
 import SearchBar from './SearchBar';
-import Modal from 'react-modal';
 import { navLinks } from '../constants';
-import RegisterAndLogin from './Signup'; // Import your SignUp component
-import { useNavigate } from 'react-router-dom';
+import { RegistrationContext } from './RegistrationContext';
+import { signOut } from "firebase/auth";
+import RegisterAndLogin from './Signup';
+import { database } from '../firebase';
 
 Modal.setAppElement('#root');
 
 const Navbar = () => {
-  const [active, setActive] = useState(0);
+  const [active, setActive] = useState('');
   const [isSignUpOpen, setIsSignUpOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { userData, clearUserData } = useContext(RegistrationContext);
+  const location = useLocation();
   const history = useNavigate();
 
   const openSignUp = () => {
@@ -26,28 +28,27 @@ const Navbar = () => {
   };
 
   const handleSignInSuccess = () => {
-    setIsLoggedIn(true);
-    setTimeout(() => {
-      closeSignUp();
-    }, 10000); // Close the sign-up modal after 10 seconds
-
-    // Redirect to the home page
-    history("/");
+    setIsSignUpOpen(false);
+    history('/');
   };
 
   const handleSignOut = () => {
-    setIsLoggedIn(false);
-  };
-
-  const handleCartClick = () => {
-    // Handle cart click action
+    signOut(database)
+      .then(() => {
+        clearUserData();
+        history('/signin');
+      })
+      .catch((error) => {
+        console.error(error);
+        alert("Error occurred while logging out. Please try again.");
+      });
   };
 
   return (
     <nav className={`${styles.paddingX} w-full flex items-center py-3 fixed top-0 z-20 bg-primary`}>
       <div className='w-full flex justify-between items-center max-w-7xl mx-auto'>
         <a href="/" className='flex items-center gap-2' onClick={() => {
-          setActive("");
+          setActive('');
           window.scrollTo(0, 0);
         }}>
           <img src={logo} alt="logo" style={{ width: '5%', height: '5%', borderRadius: '50%' }} className='object-contain' />
@@ -58,8 +59,8 @@ const Navbar = () => {
                 key={link.id}
                 className={`${
                   active === link.title
-                    ? "text-primary"
-                    : "text-secondary"
+                    ? 'text-primary'
+                    : 'text-secondary'
                 } hover:text-primary text-[18px] font-medium cursor-pointer`}
                 onClick={() => setActive(link.title)}
               >
@@ -75,26 +76,7 @@ const Navbar = () => {
           <div className="pl-4 w-[120%]">
             <SearchBar />
           </div>
-          {isLoggedIn ? (
-            <div>
-              {/* Display a message when the user is logged in */}
-              <p className="text-white">Logged in successfully!</p>
-              {/* Render cart button if user is logged in */}
-              <button
-                className="text-primary bg-primary text-primay hover:text-secondary px-4 py-2 rounded w-full mr-10"
-                onClick={handleCartClick} // Handle cart click action
-              >
-                Cart
-              </button>
-              {/* Render logout button if user is logged in */}
-              <button
-                className="text-primary bg-primary text-primay hover:text-secondary px-4 py-2 rounded w-full mr-10"
-                onClick={handleSignOut} // Handle sign out action
-              >
-                Logout
-              </button>
-            </div>
-          ) : (
+          {Object.keys(userData).length === 0 ? (
             <div>
               {/* Render sign up button if user is not logged in */}
               <button
@@ -102,6 +84,16 @@ const Navbar = () => {
                 onClick={openSignUp} // Open the sign-up modal
               >
                 Sign Up
+              </button>
+            </div>
+          ) : (
+            <div>
+              {/* Render logout button if user is logged in */}
+              <button
+                className="text-primary bg-primary text-primay hover:text-secondary px-4 py-2 rounded w-full mr-10"
+                onClick={handleSignOut} // Handle sign out action
+              >
+                Logout
               </button>
             </div>
           )}

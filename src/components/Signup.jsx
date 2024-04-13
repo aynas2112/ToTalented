@@ -1,21 +1,30 @@
-// RegisterAndLogin.js
-
-import React, { useState } from "react";
+import React, { useState, useContext } from 'react';
 import { database } from "../firebase";
 import {
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
   GoogleAuthProvider,
+  signInWithEmailAndPassword,
   signInWithPopup,
-  signOut // Import signOut function
-} from "firebase/auth"; // Import auth module as well
+  signOut
+} from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-import { styles } from "../style"; // Import your style file
+import { styles } from "../style";
+import {RegistrationContext} from './RegistrationContext';
 
 function RegisterAndLogin({ onClose, onSignInSuccess }) {
   const [login, setLogin] = useState(false);
   const [successAnimation, setSuccessAnimation] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false); // State to manage modal visibility
   const history = useNavigate();
+  const { userData, setUserData } = useContext(RegistrationContext);
+
+  const openModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+  };
 
   const handleSubmit = (e, type) => {
     e.preventDefault();
@@ -25,7 +34,6 @@ function RegisterAndLogin({ onClose, onSignInSuccess }) {
     if (type === "signup") {
       const confirmPassword = e.target.confirmPassword.value;
 
-      // Check if passwords match
       if (password !== confirmPassword) {
         alert("Passwords do not match");
         return;
@@ -35,20 +43,20 @@ function RegisterAndLogin({ onClose, onSignInSuccess }) {
         .then((data) => {
           console.log(data, "authData");
           setSuccessAnimation(true);
-          setLogin(true); // Change to logout after successful signup
+          setLogin(true);
 
-          // Call onSignInSuccess callback if provided
+          setUserData({ email: email, password: password });
+
           if (onSignInSuccess) {
             onSignInSuccess();
           }
 
-          // Reset form fields
           e.target.reset();
 
-          // Redirect to home page after a delay
           setTimeout(() => {
-            history("/"); // Navigate to home page
-          }, 2000);
+            setSuccessAnimation(false); // Reset success animation after 1 second
+            history("/");
+          }, 1000);
         })
         .catch((err) => {
           console.error(err);
@@ -60,12 +68,12 @@ function RegisterAndLogin({ onClose, onSignInSuccess }) {
         .then((data) => {
           console.log(data, "authData");
           setSuccessAnimation(true);
-          setLogin(true); // Change to logout after successful login
+          setLogin(true);
 
-          // Redirect to home page after a delay
           setTimeout(() => {
-            history("/"); // Navigate to home page
-          }, 2000);
+            setSuccessAnimation(false); // Reset success animation after 1 second
+            history("/");
+          }, 1000);
         })
         .catch((err) => {
           console.error(err);
@@ -84,12 +92,12 @@ function RegisterAndLogin({ onClose, onSignInSuccess }) {
       .then((result) => {
         console.log(result, "Google authData");
         setSuccessAnimation(true);
-        setLogin(true); // Change to logout after successful Google sign-in
+        setLogin(true);
 
-        // Redirect to home page after a delay
         setTimeout(() => {
-          history("/"); // Navigate to home page
-        }, 2000);
+          setSuccessAnimation(false); // Reset success animation after 1 second
+          history("/");
+        }, 1000);
       })
       .catch((err) => {
         console.error(err);
@@ -98,10 +106,10 @@ function RegisterAndLogin({ onClose, onSignInSuccess }) {
   };
 
   const handleLogout = () => {
-    signOut(database) // Call signOut function from the imported module
+    signOut(database)
       .then(() => {
-        setLogin(false); // Set login state to false
-        history("/signin"); // Navigate to the sign-in page
+        setLogin(false);
+        history("/signin");
       })
       .catch((error) => {
         console.error(error);
@@ -109,34 +117,16 @@ function RegisterAndLogin({ onClose, onSignInSuccess }) {
       });
   };
 
+  // Conditionally render based on userData presence
   return (
-    <div className={` ${styles.padding} bg-primary h-[250%] -mt-6 -ml-5 -mr-5 text-center`}>
-      <div className="row">
-        {successAnimation ? (
-          <div className="text-green-500">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6 mx-auto animate-bounce"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M8 14l4 4m0 0l4-4m-4 4V6"
-              />
-            </svg>
-            <p className="text-green-500 font-bold">Success!</p>
-          </div>
-        ) : (
-          <>
+    <>
+      {Object.keys(userData).length === 0 && !successAnimation && (
+        <div className={` ${styles.padding} bg-primary h-[250%] -mt-6 -ml-5 -mr-5 text-center`}>
+          <div className="row">
             <h1 className={`${styles.heroHeadText} text-center mt-4 mb-8`}>
               {login ? "Logout" : "SignIn"}
             </h1>
-            {!login && ( // Show signup form only if not logged in
+            {!login && (
               <form onSubmit={(e) => handleSubmit(e, "signup")} className="mt-4">
                 <input
                   className="block w-full py-2 px-3 border-b border-gray-300 focus:outline-none focus:border-primary"
@@ -158,7 +148,10 @@ function RegisterAndLogin({ onClose, onSignInSuccess }) {
                   placeholder="Confirm Password"
                 />
                 <br />
-                <p className={`${styles.cursorPointer} text-primary`} onClick={handleReset}>
+                <p
+                  className={`${styles.cursorPointer} text-primary`}
+                  onClick={handleReset}
+                >
                   Forgot Password?
                 </p>
                 <br />
@@ -173,15 +166,15 @@ function RegisterAndLogin({ onClose, onSignInSuccess }) {
                 </button>
               </form>
             )}
-          </>
-        )}
-        {login && ( // Show logout button if logged in
-          <button className="bg-primary text-white py-2 px-4 rounded" onClick={handleLogout}>
-            Logout
-          </button>
-        )}
-      </div>
-    </div>
+            {login && (
+              <button className="bg-primary text-white py-2 px-4 rounded" onClick={handleLogout}>
+                Logout
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
